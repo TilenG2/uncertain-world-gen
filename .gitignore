@@ -1,0 +1,9 @@
+.testing
+__pycache__
+*.egg-info
+orange-demo
+*.ows*
+.vscode
+data
+scripting/*.csv
+scripting/old/*
