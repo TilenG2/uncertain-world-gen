@@ -144,7 +144,7 @@ def data_to_world(data, errRange = 1, corr = 1):
         arr.append(ovunc[:, 0]) 
         arr.append(ovunc[:, 1])
 
-    #True Value 1, True Value 2, Class, Observed Value 1, Uncertainty 1, Observed Value 2, Uncertainty 2
+    #Class, True Value 1, True Value 2, Observed Value 1, Uncertainty 1, Observed Value 2, Uncertainty 2
     return np.stack(arr, axis=1)
 
 def sample_data(data, sample_per_class = 20):
@@ -158,7 +158,7 @@ def sample_data(data, sample_per_class = 20):
             bagged_data = np.concatenate((bagged_data, bagged_data_class))
     return bagged_data
 
-def generate_world(seed, features, feature_bounds = (0, 1), endT = .2, endA = .1, max_depth = 4, class_number = 2, errRange = 0.1, corr = 1):
+def generate_world(seed, features, feature_bounds = (0, 1), endT = .2, endA = .3, max_depth = 4, class_number = 2, errRange = 0.1, corr = 1):
     random.seed(seed)
     np.random.seed(seed)
     world_coords = generate_world_bounds(features = features, feature_bounds = feature_bounds, endT = endT, endA = endA, max_depth = max_depth)
