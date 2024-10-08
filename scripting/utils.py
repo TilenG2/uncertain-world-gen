@@ -79,15 +79,28 @@ def generate_world_bounds(features, feature_bounds = (0, 1), endThreshold = .20,
     bounds |= generate_world_bounds(current_bounds = copy(current_bounds), depth = depth + 1, **args)
     return bounds
 
-def generate_true_values(bounds_with_class, feature_bounds):
-    if type(feature_bounds) is tuple and len(feature_bounds) == 2:
-        feature_bounds = [feature_bounds for _ in range(len(list(bounds_with_class.items())[0][0]))]
+def generate_true_values(seed, class_with_bounds,
+                         no_samples = 10**4,
+                         equal_classes = False):
+    random.seed(seed)
     points = []
-    for _ in range(10**4):
-        val = [random.uniform(feature_bounds[i][0], feature_bounds[i][1]) for i in range(len(feature_bounds))]
-        for bounds, cls in bounds_with_class.items():
-            if all([start < val[i] < end for i, (start, end) in enumerate(bounds)]):
+        
+    if equal_classes:
+        for cls in class_with_bounds.keys():
+            for _ in range(no_samples):
+                val = [random.uniform(minV, maxV) for minV, maxV in random.choice(list(class_with_bounds[cls]))]
                 points.append(np.array([cls] + val))
+    else:
+        bounds_set = set()
+        for b in class_with_bounds.values():
+            bounds_set |= b
+        for _ in range(no_samples):
+            bound = random.choice(list(bounds_set))
+            for cls, bounds in class_with_bounds.items():
+                if bound in bounds:
+                    break
+            val = [random.uniform(minV, maxV) for minV, maxV in bound]
+            points.append(np.array([cls] + val))
     return np.array(points)
 
 def add_unc(tv, errRange = 1, corr = 1):
@@ -129,7 +142,7 @@ def data_to_world(data, errRange = 1, corr = 1):
     n_feat -= 1
     args = {
         "errRange": errRange,
-        "corr" : corr
+        "correlation" : corr
     }
     arr = []
     i = 0
@@ -151,45 +164,75 @@ def sample_data(data, sample_per_class = 20):
     for i, value in enumerate(np.unique(data[:, 0])):
         indices, = np.where(data[:, 0] == value)
         data_per_class = data[indices]
-        bagged_data_class = data_per_class[np.random.choice(len(data_per_class), size=sample_per_class, replace=False)]
+        bagged_data_class = data_per_class[random.choice(len(data_per_class), size=sample_per_class, replace=False)]
         if i == 0:
             bagged_data = bagged_data_class
         else:
             bagged_data = np.concatenate((bagged_data, bagged_data_class))
     return bagged_data
 
-def generate_world(seed, features, feature_bounds = (0, 1), endArea = .3, max_depth = 4, class_number = 2, errRange = 0.1, corr = 1):
-    random.seed(seed)
-    np.random.seed(seed)
-    world_coords = generate_world_bounds(features = features, feature_bounds = feature_bounds, endThreshold = .2, endArea = endArea, max_depth = max_depth)
-    bounds_with_class = {}
-    # if
+def generate_world(world_seed, data_seed, features,
+                   no_samples = 10**4,
+                   equal_classes = False,
+                   feature_bounds = (0, 1),
+                   endArea = .3,
+                   endThreshold = .2,
+                   max_depth = 4,
+                   class_number = 2,
+                   errRange = 0.1,
+                   corr = 1):
+
+    args = {"features": features,
+            "feature_bounds": feature_bounds,
+            "endThreshold": endThreshold,
+            "endArea": endArea,
+            "max_depth": max_depth,
+            }
+    
+    random.seed(world_seed)
+    world_coords = generate_world_bounds(**args)
+    
+    from collections import defaultdict
+    class_with_bounds = defaultdict(set)
     random_list = list(np.arange(class_number)) + [random.randint(0, class_number - 1) for _ in range(len(world_coords) - class_number)]
-    np.random.shuffle(random_list)
+    random.shuffle(random_list)
     for i, bounds in zip(random_list, world_coords):
-        bounds_with_class[bounds] = i
-    data = generate_true_values(bounds_with_class, feature_bounds)
+        class_with_bounds[i] |= {bounds}
+    
+    data = generate_true_values(data_seed, class_with_bounds, no_samples, equal_classes)
     
     return data_to_world(data, errRange = errRange, corr = corr)
 
-def generate_world_pandas(seed, features, feature_bounds = (0, 1), endArea = .3, max_depth = 4, class_number = 2):
-    random.seed(seed)
-    np.random.seed(seed)
-    world_coords = generate_world_bounds(features = features, feature_bounds = feature_bounds, endThreshold = .2 , endArea = endArea, max_depth = max_depth)
-    bounds_with_class = {}
-    random_list = list(np.arange(class_number)) + [random.randint(0, class_number - 1) for _ in range(len(world_coords) - class_number)]
-    np.random.shuffle(random_list)
-    for i, bounds in zip(random_list, world_coords):
-        bounds_with_class[bounds] = i
-    data = generate_true_values(bounds_with_class, feature_bounds)
-    df = pd.DataFrame(data, columns=['Class'] + [f'True Value {i}' for i in range(1, features+1)])
+def generate_world_pandas(world_seed, data_seed, features,
+                   no_samples = 10**4,
+                   equal_classes = False,
+                   feature_bounds = (0, 1),
+                   endArea = .3,
+                   endThreshold = .2,
+                   max_depth = 4,
+                   class_number = 2,
+                   errRange = 0.1,
+                   corr = 1):
+    
+    data = generate_world(world_seed, data_seed, features,
+                          no_samples = no_samples,
+                          equal_classes = equal_classes,
+                          feature_bounds = feature_bounds,
+                          endArea = endArea,
+                          endThreshold = endThreshold,
+                          max_depth = max_depth,
+                          class_number = class_number,
+                          errRange = errRange,
+                          corr = corr)
+    
+    df = pd.DataFrame(data, columns=['Class'] + [f'True Value {i}' for i in range(1, features+1)] + list(np.array(list(zip([f'Observed Value {i}' for i in range(1, features+1)], [f'Uncertainty {i}' for i in range(1, features+1)]))).flatten()))
     return df
 
 def sample_data_orange(data, samples_per_class = 20):
     for i, value in enumerate(np.unique(data.Y)):
         indices, = np.where(data.Y == value)
         data_per_class = data[indices]
-        sampled_data_class = data_per_class[np.random.choice(len(data_per_class), size=samples_per_class, replace=False)]
+        sampled_data_class = data_per_class[random.choice(len(data_per_class), size=samples_per_class, replace=False)]
         if i == 0:
             sampled_data = sampled_data_class
         else:
