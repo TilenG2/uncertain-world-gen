@@ -103,39 +103,35 @@ def generate_true_values(seed, class_with_bounds,
             points.append(np.array([cls] + val))
     return np.array(points)
 
-def add_unc(tv, errRange = 1, corr = 1):
-    if 0.58 > corr or corr > 1:
-        raise ValueError(f"corr must be between 0.58 and 1 got {corr}")
-    _saved_corr = {
-        1: 1
-    }
-    _p = np.poly1d(np.array([ 2.52675290e+06, -1.84002863e+07,  6.02862434e+07, -1.17400405e+08,
-        1.51226264e+08, -1.35686740e+08,  8.69776830e+07, -4.02013544e+07,
-        1.33565614e+07, -3.14334758e+06,  5.09552210e+05, -5.43413126e+04,
-        3.54198523e+03, -1.26493380e+02,  4.12474405e+00, -1.00546571e+00]))
+def add_unc(tv, correlation, errRange):
+    error = np.random.uniform(-errRange, errRange, tv.shape)
+    obs = tv + error
+    X = np.abs(error)
     
-    def add_unc_single_value(tv, errRange, corr):
-        if corr not in _saved_corr.keys():
-            _saved_corr[corr] = _p(corr)
-        err = errRange * random.random() * [-1,+1][random.randint(0,1)]
-        ov = tv + err
-        unc = abs(err * random.uniform(_saved_corr[corr] , 1))
-        return ov, unc
+    if errRange == 0: # To ensure not to have nan in uncertainty vector. If error_range is 0, set Uncertainty directly to 0
+        Y = np.zeros_like(X)
     
-    def add_unc_array(tv, errRange, corr):
-        ov_unc = []
-        for t in tv:
-            ov_unc.append(add_unc_single_value(t, errRange, corr))
-        return np.array(ov_unc)
-    
-    try:
-        iter(tv)
-    except:
-        _add_unc = add_unc_single_value
     else:
-        _add_unc = add_unc_array
+        # Standardize X
+        X_standardized = (X - X.mean()) / X.std()
+        
+        # Generate Z such that correlation is maintained
+        Z = np.random.uniform(0, 1, X.shape)
+        Z_standardized = (Z - Z.mean()) / Z.std()
+        
+        # Create Y with the specified correlation
+        Y_standardized = correlation * X_standardized + np.sqrt(1 - correlation**2) * Z_standardized
+        
+        # Scale Y back to the original scale of X
+        Y = Y_standardized * X.std() + X.mean()
+        
+        # Calculate the uncertainty Y = ZX
+        Y = Y * X.mean()  # Adjust Y with the mean of X to ensure scaling
     
-    return _add_unc(tv, errRange, corr)
+    # Add the calculated uncertainty to the dataset
+    unc = Y.astype(np.float32)
+
+    return np.array([obs, unc, error])
 
 def data_to_world(data, errRange = 1, corr = 1):
     _, n_feat = data.shape
@@ -153,11 +149,12 @@ def data_to_world(data, errRange = 1, corr = 1):
         i += 1
 
     for i in range(n_feat):
-        ovunc = add_unc(data[:, i + 1], **args)
-        arr.append(ovunc[:, 0]) 
-        arr.append(ovunc[:, 1])
+        ov_unc_err = add_unc(data[:, i + 1], **args)
+        arr.append(ov_unc_err[0]) 
+        arr.append(ov_unc_err[1])
+        arr.append(ov_unc_err[2])
 
-    #Class, True Value 1, True Value 2, Observed Value 1, Uncertainty 1, Observed Value 2, Uncertainty 2
+    #Class, True Value 1, True Value 2, Observed Value 1, Uncertainty 1, Error 1, Observed Value 2, Uncertainty 2, Error 2
     return np.stack(arr, axis=1)
 
 def sample_data(data, sample_per_class = 20):
@@ -201,6 +198,7 @@ def generate_world(world_seed, data_seed, features,
     
     data = generate_true_values(data_seed, class_with_bounds, no_samples, equal_classes)
     
+    np.random.seed(data_seed)
     return data_to_world(data, errRange = errRange, corr = corr)
 
 def generate_world_pandas(world_seed, data_seed, features,
@@ -225,7 +223,11 @@ def generate_world_pandas(world_seed, data_seed, features,
                           errRange = errRange,
                           corr = corr)
     
-    df = pd.DataFrame(data, columns=['Class'] + [f'True Value {i}' for i in range(1, features+1)] + list(np.array(list(zip([f'Observed Value {i}' for i in range(1, features+1)], [f'Uncertainty {i}' for i in range(1, features+1)]))).flatten()))
+    columns = ["Class"] + [f"True Value {feature}" for feature in range(1, features + 1)]
+    for feature in range(1, features + 1):
+        columns += [f"Observed Value {feature}", f"Uncertainty {feature}", f"Error {feature}"]
+        
+    df = pd.DataFrame(data, columns=columns)
     return df
 
 def sample_data_orange(data, samples_per_class = 20):
