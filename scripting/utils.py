@@ -103,6 +103,7 @@ def generate_true_values(seed, class_with_bounds,
             points.append(np.array([cls] + val))
     return np.array(points)
 
+
 def add_unc(tv, correlation, errRange):
     error = np.random.uniform(-errRange, errRange, tv.shape)
     obs = tv + error
@@ -126,13 +127,12 @@ def add_unc(tv, correlation, errRange):
         Y = Y_standardized * X.std() + X.mean()
         
         # Calculate the uncertainty Y = ZX
-        Y = Y * X.mean()  # Adjust Y with the mean of X to ensure scaling
+        #Y = Y * X.mean()  # Adjust Y with the mean of X to ensure scaling
     
     # Add the calculated uncertainty to the dataset
     unc = Y.astype(np.float32)
 
     return np.array([obs, unc, error])
-
 def data_to_world(data, errRange = 1, corr = 1):
     _, n_feat = data.shape
     n_feat -= 1

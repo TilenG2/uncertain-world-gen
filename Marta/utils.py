@@ -126,7 +126,7 @@ def add_unc(tv, correlation, errRange):
         Y = Y_standardized * X.std() + X.mean()
         
         # Calculate the uncertainty Y = ZX
-        Y = Y * X.mean()  # Adjust Y with the mean of X to ensure scaling
+        #Y = Y * X.mean()  # Adjust Y with the mean of X to ensure scaling
     
     # Add the calculated uncertainty to the dataset
     unc = Y.astype(np.float32)
