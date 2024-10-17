@@ -42,6 +42,10 @@ def old_generate_world_bounds(xy1 = (-1, -1), xy2 = (1, 1), orig_size = None, en
     return bounds
 
 def generate_world_bounds(features, feature_bounds = (0, 1), endThreshold = .20, endArea = .40, max_depth = 100, depth = 0, current_bounds = None):
+    """
+    return a array set of bounds like 
+    ((f1_begin, f1_end), (f2_begin, f2_end), ... (fn_begin, fn_end))
+    """
     if type(features) is int:
         features = np.arange(features)
     if type(feature_bounds) is tuple and len(feature_bounds) == 2:
@@ -88,21 +92,24 @@ def generate_true_values(seed, class_with_bounds,
     if equal_classes:
         for cls in class_with_bounds.keys():
             for _ in range(no_samples):
-                val = [random.uniform(minV, maxV) for minV, maxV in random.choice(list(class_with_bounds[cls]))]
+                class_with_bounds_list = list(class_with_bounds[cls])
+                weights = [np.prod([feature_end - feature_begin for feature_begin, feature_end in area]) for area in class_with_bounds_list]
+                val = [random.uniform(minV, maxV) for minV, maxV in random.choices(class_with_bounds_list, weights=weights, k=1)[0]]
                 points.append(np.array([cls] + val))
     else:
         bounds_set = set()
         for b in class_with_bounds.values():
             bounds_set |= b
         for _ in range(no_samples):
-            bound = random.choice(list(bounds_set))
-            for cls, bounds in class_with_bounds.items():
+            bounds_set_list = list(bounds_set)
+            weights = [np.prod([feature_end - feature_begin for feature_begin, feature_end in area]) for area in bounds_set_list]
+            bound = random.choices(bounds_set_list, weights=weights, k=1)[0]
+            for cls, bounds in class_with_bounds.items(): # find the correct class for selected bound
                 if bound in bounds:
                     break
             val = [random.uniform(minV, maxV) for minV, maxV in bound]
             points.append(np.array([cls] + val))
     return np.array(points)
-
 
 def add_unc(tv, correlation, errRange):
     error = np.random.uniform(-errRange, errRange, tv.shape)
@@ -133,6 +140,7 @@ def add_unc(tv, correlation, errRange):
     unc = Y.astype(np.float32)
 
     return np.array([obs, unc, error])
+
 def data_to_world(data, errRange = 1, corr = 1):
     _, n_feat = data.shape
     n_feat -= 1

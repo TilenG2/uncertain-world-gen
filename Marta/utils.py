@@ -88,15 +88,19 @@ def generate_true_values(seed, class_with_bounds,
     if equal_classes:
         for cls in class_with_bounds.keys():
             for _ in range(no_samples):
-                val = [random.uniform(minV, maxV) for minV, maxV in random.choice(list(class_with_bounds[cls]))]
+                class_with_bounds_list = list(class_with_bounds[cls])
+                weights = [np.prod([feature_end - feature_begin for feature_begin, feature_end in area]) for area in class_with_bounds_list]
+                val = [random.uniform(minV, maxV) for minV, maxV in random.choices(class_with_bounds_list, weights=weights, k=1)[0]]
                 points.append(np.array([cls] + val))
     else:
         bounds_set = set()
         for b in class_with_bounds.values():
             bounds_set |= b
         for _ in range(no_samples):
-            bound = random.choice(list(bounds_set))
-            for cls, bounds in class_with_bounds.items():
+            bounds_set_list = list(bounds_set)
+            weights = [np.prod([feature_end - feature_begin for feature_begin, feature_end in area]) for area in bounds_set_list]
+            bound = random.choices(bounds_set_list, weights=weights, k=1)[0]
+            for cls, bounds in class_with_bounds.items(): # find the correct class for selected bound
                 if bound in bounds:
                     break
             val = [random.uniform(minV, maxV) for minV, maxV in bound]
