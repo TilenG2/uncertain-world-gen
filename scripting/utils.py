@@ -141,6 +141,22 @@ def add_unc(tv, correlation, errRange):
 
     return np.array([obs, unc, error])
 
+def add_noise(data, correlation, errRange, mutation_rate, feature_bounds):
+    real_values = []
+    minval, maxval = feature_bounds
+    minval -= errRange
+    maxval += errRange
+    for i in range(1, len(data[0])):
+        tv = data[:,i]
+        rv = add_unc(tv, correlation, errRange)[0]
+        real_values.append(rv)
+    mutated_values = range(len(data))
+    mutated_values = np.random.choice(mutated_values, int(len(mutated_values) * mutation_rate), replace=False) # ne deluje če je len(mutated_values) * mutation_rate < 1
+    for i in mutated_values:
+        for j in range(0, len(data[0])-1):
+            real_values[j][i] = np.random.uniform(minval, maxval)
+    return real_values
+
 def data_to_world(data, errRange = 1, corr = 1):
     _, n_feat = data.shape
     n_feat -= 1
@@ -232,6 +248,80 @@ def generate_world_pandas(world_seed, data_seed, features,
                           corr = corr)
     
     columns = ["Class"] + [f"True Value {feature}" for feature in range(1, features + 1)]
+    for feature in range(1, features + 1):
+        columns += [f"Observed Value {feature}", f"Uncertainty {feature}", f"Error {feature}"]
+        
+    df = pd.DataFrame(data, columns=columns)
+    return df
+
+def generate_real_world(world_seed, data_seed, features,
+                        no_samples = 10**4,
+                        equal_classes = False,
+                        feature_bounds = (0, 1),
+                        endArea = .3,
+                        endThreshold = .2,
+                        max_depth = 4,
+                        class_number = 2,
+                        errRange = 0.1,
+                        corr = 1,
+                        mutation_rate = 0.1,
+                        errRange_real_world = 0.1,
+                        corr_real_world = 1):
+
+    args = {"features": features,
+            "feature_bounds": feature_bounds,
+            "endThreshold": endThreshold,
+            "endArea": endArea,
+            "max_depth": max_depth,
+            }
+    
+    random.seed(world_seed)
+    world_coords = generate_world_bounds(**args)
+    
+    from collections import defaultdict
+    class_with_bounds = defaultdict(set)
+    random_list = list(np.arange(class_number)) + [random.randint(0, class_number - 1) for _ in range(len(world_coords) - class_number)]
+    random.shuffle(random_list)
+    for i, bounds in zip(random_list, world_coords):
+        class_with_bounds[i] |= {bounds}
+    
+    data = generate_true_values(data_seed, class_with_bounds, no_samples, equal_classes)
+    
+    np.random.seed(data_seed)
+    data = np.concatenate([data, np.stack(add_noise(data, corr_real_world, errRange_real_world, mutation_rate, feature_bounds), axis=1)], axis=1)
+    
+    data_temp = data_to_world(np.vstack([data[:,0], data[:,features + 1:].T]).T, errRange = errRange, corr = corr)
+    return np.concatenate([data[:,1:features + 1], data_temp], axis=1)
+
+def generate_real_world_pandas(world_seed, data_seed, features,
+                        no_samples = 10**4,
+                        equal_classes = False,
+                        feature_bounds = (0, 1),
+                        endArea = .3,
+                        endThreshold = .2,
+                        max_depth = 4,
+                        class_number = 2,
+                        errRange = 0.1,
+                        corr = 1,
+                        mutation_rate = 0.1,
+                        errRange_real_world = 0.1,
+                        corr_real_world = 1):
+    
+    data = generate_real_world(world_seed, data_seed, features,
+                        no_samples = no_samples,
+                        equal_classes = equal_classes,
+                        feature_bounds = feature_bounds,
+                        endArea = endArea,
+                        endThreshold = endThreshold,
+                        max_depth = max_depth,
+                        class_number = class_number,
+                        errRange = errRange,
+                        corr = corr,
+                        mutation_rate = mutation_rate,
+                        errRange_real_world = errRange_real_world,
+                        corr_real_world = corr_real_world)
+    
+    columns = [f"True Value {feature}" for feature in range(1, features + 1)] + ["Class"] + [f"Real Value {feature}" for feature in range(1, features + 1)]
     for feature in range(1, features + 1):
         columns += [f"Observed Value {feature}", f"Uncertainty {feature}", f"Error {feature}"]
         
