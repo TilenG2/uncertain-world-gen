@@ -4,45 +4,45 @@ from matplotlib.patches import Rectangle
 from utils import *
 
 def draw_true_world(data, cmap='viridis'):    
-    classes = data[:, 0]
-    x = data[:, 1]
-    y = data[:, 2]
+    classes = data["Class"]
+    x = data["True Value 1"]
+    y = data["True Value 2"]
 
     plt.figure(figsize=(8, 8))
     plt.scatter(x, y, c=classes, cmap=cmap, edgecolor='k')
     plt.xlabel('X-axis')
     plt.ylabel('Y-axis')
     plt.title('Scatter Plot of Points by Class')
-    plt.show()
+    return plt
 
 def draw_observed_world(data, cmap='viridis'):
-    x = data[:, 3]
-    y = data[:, 5]
-    classes = data[:, 0]
+    x = data["Observed Value 1"]
+    y = data["Observed Value 2"]
+    classes = data["Class"]
 
     plt.figure(figsize=(8, 8))
     plt.scatter(x, y, c=classes, cmap=cmap, edgecolor='k')
     plt.xlabel('X-axis')
     plt.ylabel('Y-axis')
     plt.title('Scatter Plot of Points by Class')
-    plt.show()
+    return plt
 
 
 def draw_combined_world(data, sample_data = None, cmap='viridis'):
     
     # Extracting data for the true world
-    true_classes = data[:, 0]
-    true_f1 = data[:, 1]
-    true_f2 = data[:, 2]
+    true_classes = data["Class"]
+    true_f1 = data["True Value 1"]
+    true_f2 = data["True Value 2"]
     
     # Extracting data for the observed worlds
-    obs_f1 = data[:, 3]
-    obs_f2 = data[:, 5]
+    obs_f1 = data["Observed Value 1"]
+    obs_f2 = data["Observed Value 2"]
     
     if sample_data is not None:
-        obs_samp_classes = sample_data[:, 0]
-        obs_samp_f1 = sample_data[:, 3]
-        obs_samp_f2 = sample_data[:, 5]
+        obs_samp_classes = sample_data["Class"]
+        obs_samp_f1 = sample_data["Observed Value 1"]
+        obs_samp_f2 = sample_data["Observed Value 2"]
     
     # Creating subplots
     fig, axs = plt.subplots(1, 3 if sample_data is not None else 2, figsize=(24 if sample_data is not None else 16, 8))
@@ -149,10 +149,10 @@ def plot_3d_world(world, cmap='viridis'):
     # Display the combined plots
     plt.show()
 
-def draw_world_from_seed(seed, features, NUMBER_OF_CLASSES, endT = .2, endA = .3, max_depth = 4, feature_bounds = (0, 1)):
-    world = generate_world(seed, features, 
+def draw_world_from_seed(seed, features, NUMBER_OF_CLASSES, endThreshold = .2, endArea = .3, max_depth = 4, feature_bounds = (0, 1)):
+    world = generate_world(seed, data_seed = 1, features = features, 
                            feature_bounds = feature_bounds, 
-                           endT = endT, endA = endA, max_depth = max_depth,
+                           endThreshold = endThreshold, endArea = endArea, max_depth = max_depth,
                            class_number = NUMBER_OF_CLASSES,
                            errRange = 1, corr = 1)
     if features == 3:

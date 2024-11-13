@@ -192,6 +192,16 @@ def sample_data(data, sample_per_class = 20):
             bagged_data = np.concatenate((bagged_data, bagged_data_class))
     return bagged_data
 
+def sample_data_pandas(data, sample_per_class = 20):
+    for i, value in enumerate(np.unique(data["Class"])):
+        data_per_class = data[data["Class"]== value].reset_index(drop=True)
+        bagged_data_class = data_per_class.iloc[np.random.choice(len(data_per_class), size=sample_per_class, replace=False)]
+        if i == 0:
+            bagged_data = bagged_data_class
+        else:
+            bagged_data = pd.concat([bagged_data, bagged_data_class])
+    return bagged_data
+
 def generate_world(world_seed, data_seed, features,
                    no_samples = 10**4,
                    equal_classes = False,
@@ -332,7 +342,7 @@ def sample_data_orange(data, samples_per_class = 20):
     for i, value in enumerate(np.unique(data.Y)):
         indices, = np.where(data.Y == value)
         data_per_class = data[indices]
-        sampled_data_class = data_per_class[random.choice(len(data_per_class), size=samples_per_class, replace=False)]
+        sampled_data_class = data_per_class[np.random.choice(len(data_per_class), size=samples_per_class, replace=False)]
         if i == 0:
             sampled_data = sampled_data_class
         else:
