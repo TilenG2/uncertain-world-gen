@@ -8,3 +8,4 @@ data
 scripting/*.csv
 scripting/old/*
 scripting/worlds
+*.pdf

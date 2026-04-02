@@ -29,6 +29,8 @@ def draw_observed_world(data, cmap='viridis'):
 
 
 def draw_combined_world(data, sample_data = None, cmap='viridis'):
+    #Shuffle the data to ensure randomness in the plots
+    data = data.sample(frac=1).reset_index(drop=True)
     
     # Extracting data for the true world
     true_classes = data["Class"]

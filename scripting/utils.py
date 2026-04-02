@@ -353,7 +353,7 @@ def convert_np_to_orange(world, number_features):
     
     columns = ["Class"] + [f"True Value {feature}" for feature in range(1, number_features + 1)]
     for feature in range(1, number_features + 1):
-        columns += [f"Observed Value {feature}", f"Uncertainty {feature}"]
+        columns += [f"Observed Value {feature}", f"__Observed Value {feature}", f"Error {feature}"]
             
     world = pd.DataFrame(world, columns=columns) 
     
@@ -361,13 +361,13 @@ def convert_np_to_orange(world, number_features):
 
     X = np.column_stack([world[f"Observed Value {i+1}"] for i in range(number_features)])
     Y = np.array(world["Class"])
-    M = np.column_stack([world[f"Uncertainty {i+1}"] for i in range(number_features)])
+    M = np.column_stack([world[f"Observed Value {i+1}"] for i in range(number_features)])
     Xtv = np.column_stack([world[f"True Value {i+1}"] for i in range(number_features)])
     
     domain = Domain(
         attributes = [ContinuousVariable(f"Observed Value {i+1}") for i in range(number_features)],
         class_vars = DiscreteVariable("Class", values=[str(i) for i in range(max(Y+1))]),
-        metas = [ContinuousVariable(f"Uncertainty {i+1}") for i in range(number_features)]
+        metas = [ContinuousVariable(f"__Observed Value {i+1}") for i in range(number_features)]
     )
     data = Table.from_numpy(domain, X=X, Y=Y, metas=M)
     
